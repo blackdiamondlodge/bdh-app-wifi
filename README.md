@@ -8,6 +8,12 @@ lodge network by scanning. Installed into the hub through the
 Page: `/wifi/` (URL name `wifi_qr`). Signed-in users see every network in
 `NETWORKS_AUTH`; everyone else sees `NETWORKS_PUBLIC`.
 
+Each network gets an SVG QR code with error correction level H and the lodge
+monogram (`wifi/static/wifi/brand/bdl-monogram.svg`) over the centre. The
+letters are outlines from DejaVu Serif Bold, so the logo looks the same without
+the font installed. Finder patterns stay square because rounded ones break some
+decoders.
+
 ## Settings
 
 Read with `bdh_sdk.settings.app_setting`: the namespaced env var first, then
