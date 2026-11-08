@@ -1,90 +1,116 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Wifi Networks{% endblock %}
+{% block title %}Wi-Fi · Black Diamond Lodge{% endblock %}
+
+{% block body_class %}wifi-page{% endblock %}
+
+{% block extra_head %}
+<style>
+  body.wifi-page {
+    background: radial-gradient(ellipse 120% 80% at 50% 0%, #1d3350 0%, #0c1622 55%, #060a10 100%) fixed;
+    color: #e8eef5;
+    overflow: hidden;
+  }
+  .wifi-stage {
+    position: relative;
+    z-index: 1;
+    min-height: calc(100vh - 62px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3vh;
+    padding: 2vh 1rem 8vh;
+  }
+  .wifi-brand { display: flex; align-items: center; gap: 1rem; }
+  .wifi-brand img { width: clamp(48px, 7vh, 72px); height: auto; }
+  .wifi-brand-name { letter-spacing: .28em; font-weight: 600; font-size: clamp(1rem, 2.4vh, 1.35rem); }
+  .wifi-brand-sub { letter-spacing: .35em; font-size: .75rem; opacity: .55; margin-top: .2rem; }
+  .wifi-title {
+    font-weight: 300;
+    letter-spacing: .06em;
+    font-size: clamp(1.6rem, 4.5vh, 2.6rem);
+    margin: 0;
+    text-align: center;
+  }
+  .wifi-hint { opacity: .65; margin: -1.5vh 0 0; text-align: center; }
+  .wifi-networks { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; width: 100%; }
+  .wifi-card {
+    background: linear-gradient(160deg, rgba(255,255,255,.13), rgba(255,255,255,.04));
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 24px;
+    padding: 1.5rem 1.75rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 20px 50px rgba(0,0,0,.35);
+  }
+  .wifi-ssid { font-size: clamp(1.3rem, 3vh, 1.8rem); font-weight: 600; margin: 0 0 1rem; }
+  .wifi-ssid i { color: #3cc8b4; font-size: .8em; margin-right: .5rem; }
+  img.qr-code {
+    display: block;
+    width: clamp(220px, var(--qr-size, 46vh), 520px);
+    height: auto;
+    margin: 0 auto;
+    border-radius: 18px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.45);
+  }
+  .wifi-networks.many img.qr-code { --qr-size: 34vh; }
+  .wifi-password { margin: 1.1rem 0 0; font-size: clamp(1rem, 2.2vh, 1.25rem); color: rgba(255,255,255,.75); }
+  .wifi-password strong {
+    display: inline-block;
+    margin-left: .4rem;
+    padding: .2rem .7rem;
+    border-radius: 8px;
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: .04em;
+    user-select: all;
+  }
+  .wifi-empty { opacity: .7; }
+  .wifi-mountains {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    width: 100%;
+    height: 22vh;
+    z-index: 0;
+    pointer-events: none;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wifi Networks</title>
-  <style>
-    /* Global Styles */
-    body {
-      background-color: #000000;
-      color: #ffffff;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
-    h1 {
-      font-weight: 300;
-      margin-bottom: 1.5rem;
-    }
-    .card {
-      border: none;
-      border-radius: 0.5rem;
-      transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-    }
-    .card-title {
-      font-size: 1.75rem;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-    .wifi-password {
-      font-size: 1.25rem;
-      color: #555;
-      margin-bottom: 1rem;
-      letter-spacing: 0.05em;
-    }
-    /* Increase QR image size */
-    img.qr-code {
-      max-width: 600px;
-      width: 100%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }
-    /* Full-height container centering */
-    .full-height {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      height: calc(100vh - 62px);
-    }
-  </style>
-</head>
-<body>
-  <div class="container full-height">
-      <h1 class="text-center mb-4">WiFi Networks</h1>
-      {% if qr_codes|length <= 2 %}
-        <div class="row justify-content-center">
-      {% else %}
-        <div class="row">
-      {% endif %}
-          {% for network in qr_codes %}
-              {% if qr_codes|length == 1 %}
-                <div class="col-md-8 mb-3 d-flex align-items-stretch">
-              {% else %}
-                <div class="col-md-4 mb-3 d-flex align-items-stretch">
-              {% endif %}
-                    <div class="card shadow-sm w-100">
-                        <div class="card-body text-center">
-                            <h5 class="card-title">{{ network.ssid }}</h5>
-                            <p class="wifi-password">Password: <strong>{{ network.password }}</strong></p>
-                            <img src="data:image/png;base64,{{ network.qr_image }}" class="qr-code" alt="QR code for {{ network.ssid }}">
-                        </div>
-                    </div>
-                </div>
-          {% endfor %}
-        </div>
+<div class="wifi-stage">
+  <div class="wifi-brand">
+    <img src="{% static 'wifi/brand/bdl-monogram-light.svg' %}" alt="">
+    <div>
+      <div class="wifi-brand-name">BLACK DIAMOND LODGE</div>
+      <div class="wifi-brand-sub">SUN PEAKS · BC</div>
+    </div>
   </div>
-</body>
-</html>
+
+  <h1 class="wifi-title">WiFi Networks</h1>
+  {% if qr_codes %}
+    <p class="wifi-hint">Point your phone's camera at a code to join.</p>
+  {% endif %}
+
+  <div class="wifi-networks{% if qr_codes|length > 1 %} many{% endif %}">
+    {% for network in qr_codes %}
+      <div class="wifi-card">
+        <h2 class="wifi-ssid"><i class="fas fa-wifi" aria-hidden="true"></i>{{ network.ssid }}</h2>
+        <img src="data:image/svg+xml;base64,{{ network.qr_image }}" class="qr-code" alt="QR code for {{ network.ssid }}">
+        <p class="wifi-password">Password<strong>{{ network.password }}</strong></p>
+      </div>
+    {% empty %}
+      <p class="wifi-empty">No networks are configured.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<svg class="wifi-mountains" viewBox="0 0 1200 200" preserveAspectRatio="none" aria-hidden="true">
+  <path d="M0 200 L0 120 L120 70 L210 110 L330 40 L430 105 L520 75 L640 130 L760 55 L880 115 L980 80 L1090 125 L1200 90 L1200 200 Z" fill="#fff" fill-opacity=".04"/>
+  <path d="M0 200 L0 150 L150 105 L260 145 L390 95 L520 150 L660 110 L800 160 L930 120 L1060 155 L1200 125 L1200 200 Z" fill="#fff" fill-opacity=".06"/>
+</svg>
 {% endblock %}

@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+import xml.etree.ElementTree as ET
 from unittest import mock
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import TestCase, tag, override_settings, Client
@@ -11,9 +12,57 @@ from selenium.webdriver.support import expected_conditions as EC
 from django.contrib.auth.models import User
 from django.urls import reverse
 
-from PIL import Image
+from PIL import Image, ImageDraw
 from pyzbar.pyzbar import decode
 from tests.selenium_helpers import get_chrome_options, login_from_page
+
+from wifi.views import qr_svg
+
+def _rasterize_qr_svg(svg, scale=12):
+    """Rasterize the SVG from wifi.views.qr_svg (circles, finder rects and the
+    nested logo <svg>) with PIL. The logo area is painted solid black, the
+    worst case a scanner can see there."""
+    ns = "{http://www.w3.org/2000/svg}"
+    root = ET.fromstring(svg)
+    n = float(root.get("viewBox").split()[2])
+    img = Image.new("L", (int(n * scale), int(n * scale)), 255)
+    draw = ImageDraw.Draw(img)
+    for el in root.iter():
+        if el.tag == ns + "circle":
+            cx, cy, r = (float(el.get(k)) * scale for k in ("cx", "cy", "r"))
+            draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=0)
+        elif el.tag == ns + "rect" and el.get("x") is not None:
+            x, y, w, h = (float(el.get(k)) * scale for k in ("x", "y", "width", "height"))
+            if el.get("fill") == "none":
+                sw = float(el.get("stroke-width")) * scale
+                draw.rectangle([x - sw / 2, y - sw / 2, x + w + sw / 2, y + h + sw / 2], outline=0, width=int(sw))
+            else:
+                draw.rectangle([x, y, x + w, y + h], fill=0)
+        elif el.tag == ns + "svg" and el is not root:
+            x, y, w = (float(el.get(k)) * scale for k in ("x", "y", "width"))
+            draw.rectangle([x, y, x + w, y + w], fill=0)
+    return img
+
+
+def _decode_data_uri_svg(content):
+    """Decode the first QR code SVG data URI in a page."""
+    start = content.find(SVG_DATA_URI)
+    assert start != -1, "QR code SVG data URI not found"
+    start += len(SVG_DATA_URI)
+    svg = base64.b64decode(content[start:content.find('"', start)]).decode("utf-8")
+    return [d.data.decode("utf-8") for d in decode(_rasterize_qr_svg(svg))]
+
+
+def _decode_element(img_element):
+    """Decode the QR code as the browser rendered it, logo included."""
+    image = Image.open(io.BytesIO(img_element.screenshot_as_png))
+    decoded = decode(image)
+    assert decoded, "No QR code detected in the rendered image"
+    return decoded[0].data.decode("utf-8")
+
+
+SVG_DATA_URI = "data:image/svg+xml;base64,"
+
 
 class WifiQRGenerationTests(TestCase):
     def setUp(self):
@@ -24,39 +73,21 @@ class WifiQRGenerationTests(TestCase):
         WIFI_PASSWORD_FOR_TESTNETWORK="testpass123",
     )
     def test_qr_code_generation_with_env_variables(self):
-        # Access the QR view.
         response = self.client.get("/wifi/")
         self.assertEqual(response.status_code, 200)
-
-        # Parse out the base64 image from the HTML.
-        # For simplicity, we'll search for the first occurrence of a data URI.
         content = response.content.decode("utf-8")
-        start = content.find("data:image/png;base64,")
-        self.assertNotEqual(start, -1, "QR code base64 image not found")
-        # Extract the base64 string
-        base64_start = start + len("data:image/png;base64,")
-        end = content.find("\"", base64_start)
-        base64_str = content[base64_start:end]
+        self.assertEqual(_decode_data_uri_svg(content), ["WIFI:S:TestNetwork;T:WPA;P:testpass123;;"])
 
-        # Decode the base64 string into an image.
-        image_data = base64.b64decode(base64_str)
-        image = Image.open(io.BytesIO(image_data))
+    def test_qr_with_logo_scans_for_long_passwords(self):
+        """Longer payloads need bigger QR versions; the logo hole scales with
+        them and must stay within what error correction can recover."""
+        for password in ("x", "correct-horse-battery-staple-" * 3):
+            text = f"WIFI:S:Black Diamond Lodge Guest;T:WPA;P:{password};;"
+            decoded = [d.data.decode("utf-8") for d in decode(_rasterize_qr_svg(qr_svg(text)))]
+            self.assertEqual(decoded, [text])
 
-        # Use pyzbar to decode the QR code.
-        decoded_objects = decode(image)
-        self.assertGreater(len(decoded_objects), 0, "No QR code detected in the image")
-
-        # The expected QR text per your view format.
-        #
-        # Format: WIFI:S:<SSID>;T:WPA;P:<password>;;
-        expected_qr_text = f"WIFI:S:TestNetwork;T:WPA;P:testpass123;;"
-        decoded_text = decoded_objects[0].data.decode("utf-8")
-        self.assertEqual(
-            decoded_text,
-            expected_qr_text,
-            f"Expected QR data '{expected_qr_text}' but got '{decoded_text}'"
-        )
-
+    def test_qr_embeds_monogram(self):
+        self.assertIn('class="qr-logo"', qr_svg("WIFI:S:x;T:WPA;P:y;;"))
 
 @tag('selenium')
 @override_settings(
@@ -85,15 +116,6 @@ class WifiQRPageSeleniumTests(StaticLiveServerTestCase):
         self.driver.delete_all_cookies()
 
         self.test_user = User.objects.create_user(username='testuser', password='testpassword')
-        
-    def test_wifi_page_background_color(self):
-        """Verify that the wifi page background color is black (rgba(0, 0, 0, 1))."""
-        self.driver.get(f'{self.live_server_url}/wifi/')
-        body = WebDriverWait(self.driver, 20).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-        background_color = body.value_of_css_property("background-color")
-        self.assertEqual(background_color, 'rgba(0, 0, 0, 1)')
         
     def test_wifi_page_title_and_header(self):
         """Verify that the wifi page title and header are correct."""
@@ -160,16 +182,7 @@ class WifiQRPageSeleniumTests(StaticLiveServerTestCase):
         
         # Iterate through each found QR code image.
         for img in qr_images:
-            # Extract the base64 encoded image data.
-            src = img.get_attribute("src")
-            base64_str = src.split(",")[1]
-            image_data = base64.b64decode(base64_str)
-            image = Image.open(io.BytesIO(image_data))
-            
-            # Decode the QR code.
-            decoded_objects = decode(image)
-            self.assertGreater(len(decoded_objects), 0, "No QR code detected in the image")
-            decoded_text = decoded_objects[0].data.decode("utf-8")
+            decoded_text = _decode_element(img)
             
             # Ensure no auth network QR data is present.
             self.assertNotIn(
@@ -202,16 +215,7 @@ class WifiQRPageSeleniumTests(StaticLiveServerTestCase):
             width = img.size.get("width", 0)
             self.assertGreater(width, 0, f"Image width should be > 0 but got {width}")
 
-            # Check if the image is a valid QR code.
-            src = img.get_attribute("src")
-            base64_str = src.split(",")[1]
-            image_data = base64.b64decode(base64_str)
-            image = Image.open(io.BytesIO(image_data))
-            decoded_objects = decode(image)
-            self.assertGreater(len(decoded_objects), 0, "No QR code detected in the image")
-
-            # Check if the decoded text is correct.
-            decoded_text = decoded_objects[0].data.decode("utf-8")
+            decoded_text = _decode_element(img)
             self.assertIn(
                 decoded_text,
                 expected_qr_texts,
@@ -289,15 +293,7 @@ class WifiQRPageSeleniumTests(StaticLiveServerTestCase):
         }
         
         for img in qr_images:
-            src = img.get_attribute("src")
-            base64_str = src.split(",")[1]
-            image_data = base64.b64decode(base64_str)
-            image = Image.open(io.BytesIO(image_data))
-            
-            # Decode the QR code.
-            decoded_objects = decode(image)
-            self.assertGreater(len(decoded_objects), 0, "No QR code detected in the image")
-            decoded_text = decoded_objects[0].data.decode("utf-8")
+            decoded_text = _decode_element(img)
 
             # Ensure that the decoded text is not one of the public QR codes.
             self.assertNotIn(
@@ -338,15 +334,7 @@ class WifiQRPageSeleniumTests(StaticLiveServerTestCase):
         found_auth_qr_texts = set()
         
         for img in qr_images:
-            src = img.get_attribute("src")
-            base64_str = src.split(",")[1]
-            image_data = base64.b64decode(base64_str)
-            image = Image.open(io.BytesIO(image_data))
-
-            # Decode the QR code.
-            decoded_objects = decode(image)
-            self.assertGreater(len(decoded_objects), 0, "No QR code detected in the image")
-            decoded_text = decoded_objects[0].data.decode("utf-8")
+            decoded_text = _decode_element(img)
             
             if decoded_text in expected_auth_qr_texts:
                 found_auth_qr_texts.add(decoded_text)
