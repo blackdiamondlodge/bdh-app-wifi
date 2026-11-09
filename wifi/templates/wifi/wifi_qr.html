@@ -23,18 +23,7 @@
     gap: 3vh;
     padding: 2vh 1rem 8vh;
   }
-  .wifi-brand { display: flex; align-items: center; gap: 1rem; }
-  .wifi-brand img { width: clamp(48px, 7vh, 72px); height: auto; }
-  .wifi-brand-name { letter-spacing: .28em; font-weight: 600; font-size: clamp(1rem, 2.4vh, 1.35rem); }
-  .wifi-brand-sub { letter-spacing: .35em; font-size: .75rem; opacity: .55; margin-top: .2rem; }
-  .wifi-title {
-    font-weight: 300;
-    letter-spacing: .06em;
-    font-size: clamp(1.6rem, 4.5vh, 2.6rem);
-    margin: 0;
-    text-align: center;
-  }
-  .wifi-hint { opacity: .65; margin: -1.5vh 0 0; text-align: center; }
+  .wifi-hint { opacity: .65; margin: 0; text-align: center; font-size: clamp(1rem, 2.4vh, 1.3rem); }
   .wifi-networks { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; width: 100%; }
   .wifi-card {
     background: linear-gradient(160deg, rgba(255,255,255,.13), rgba(255,255,255,.04));
@@ -83,15 +72,7 @@
 
 {% block content %}
 <div class="wifi-stage">
-  <div class="wifi-brand">
-    <img src="{% static 'wifi/brand/bdl-monogram-light.svg' %}" alt="">
-    <div>
-      <div class="wifi-brand-name">BLACK DIAMOND LODGE</div>
-      <div class="wifi-brand-sub">SUN PEAKS · BC</div>
-    </div>
-  </div>
-
-  <h1 class="wifi-title">WiFi Networks</h1>
+  <h1 class="visually-hidden">WiFi Networks</h1>
   {% if qr_codes %}
     <p class="wifi-hint">Point your phone's camera at a code to join.</p>
   {% endif %}

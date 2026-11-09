@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bdh-app-wifi"
-version = "1.1.0"
+version = "1.1.1"
 description = "Black Diamond Hub app: Wi-Fi QR codes for guests"
 readme = "README.md"
 license = { text = "MIT" }
