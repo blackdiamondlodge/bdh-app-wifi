@@ -123,7 +123,7 @@ class WifiQRPageSeleniumTests(StaticLiveServerTestCase):
         header = WebDriverWait(self.driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, "h1"))
         )
-        self.assertEqual(header.text.strip(), "WiFi Networks")
+        self.assertEqual(header.get_attribute("textContent").strip(), "WiFi Networks")
         
     # def test_qr_codes_container_is_centered(self):
     #     """
