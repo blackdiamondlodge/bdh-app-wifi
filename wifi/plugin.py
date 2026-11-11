@@ -10,7 +10,7 @@ spec = PluginSpec(
             url_name="wifi_qr",
             icon="wifi/hub/icon.svg",
             section="more",
-            subtitle="Scan to connect",
+            subtitle="Connect to the internet",
             order=10,
         ),
     ),
