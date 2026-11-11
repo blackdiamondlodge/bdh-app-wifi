@@ -14,7 +14,7 @@ from django.urls import reverse
 
 from PIL import Image, ImageDraw
 from pyzbar.pyzbar import decode
-from tests.selenium_helpers import get_chrome_options, login_from_page
+from tests.selenium_helpers import click_until, get_chrome_options, login_from_page
 
 from wifi.views import qr_svg
 
@@ -254,15 +254,12 @@ class WifiQRPageSeleniumTests(StaticLiveServerTestCase):
         # Log in using shared helper
         login_from_page(self.driver, self.live_server_url)
         
-        # Wait for the redirect to complete.
-        logout_button = WebDriverWait(self.driver, 20).until(
-            EC.element_to_be_clickable((By.ID, 'logout-button'))
-        )
-        #assert if logout button is present
-        self.assertTrue(logout_button.is_displayed(), "Logout button is not displayed")
-        logout_button.click()
-        
-        # Check that the current URL is the wifi page.
+        # Sign out lives in the account menu, so open that first.
+        click_until(self.driver, (By.ID, 'user-menu-button'),
+                    lambda d: d.find_element(By.ID, 'logout-button').is_displayed())
+        click_until(self.driver, (By.ID, 'logout-button'),
+                    EC.presence_of_element_located((By.ID, 'login-button')), settle=10)
+
         self.assertIn("/wifi/", self.driver.current_url)
         
     def test_wifi_page_no_public_qr_codes(self):
