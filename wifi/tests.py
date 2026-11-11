@@ -86,6 +86,19 @@ class WifiQRGenerationTests(TestCase):
             decoded = [d.data.decode("utf-8") for d in decode(_rasterize_qr_svg(qr_svg(text)))]
             self.assertEqual(decoded, [text])
 
+    @override_settings(WIFI_NETWORKS_PUBLIC=["Guest"], WIFI_NETWORKS_AUTH=["Private"])
+    def test_private_networks_are_admin_only(self):
+        def ssids():
+            return [q["ssid"] for q in self.client.get("/wifi/").context["qr_codes"]]
+
+        self.assertEqual(ssids(), ["Guest"])
+        user = User.objects.create_user(username="member", password="pw")
+        self.client.force_login(user)
+        self.assertEqual(ssids(), ["Guest"])
+        user.is_staff = True
+        user.save()
+        self.assertEqual(ssids(), ["Private"])
+
     def test_qr_embeds_monogram(self):
         self.assertIn('class="qr-logo"', qr_svg("WIFI:S:x;T:WPA;P:y;;"))
 
@@ -115,7 +128,7 @@ class WifiQRPageSeleniumTests(StaticLiveServerTestCase):
         self.driver.get('about:blank')
         self.driver.delete_all_cookies()
 
-        self.test_user = User.objects.create_user(username='testuser', password='testpassword')
+        self.test_user = User.objects.create_user(username='testuser', password='testpassword', is_staff=True)
         
     def test_wifi_page_title_and_header(self):
         """Verify that the wifi page title and header are correct."""

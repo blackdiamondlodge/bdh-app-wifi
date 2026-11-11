@@ -5,7 +5,7 @@ lodge network by scanning. Installed into the hub through the
 `blackdiamondhub.plugins` entry point (see
 [bdh-sdk](https://github.com/blackdiamondlodge/bdh-sdk)).
 
-Page: `/wifi/` (URL name `wifi_qr`). Signed-in users see every network in
+Page: `/wifi/` (URL name `wifi_qr`). Admins (signed-in staff) see every network in
 `NETWORKS_AUTH`; everyone else sees `NETWORKS_PUBLIC`.
 
 Each network gets an SVG QR code with error correction level H and the lodge

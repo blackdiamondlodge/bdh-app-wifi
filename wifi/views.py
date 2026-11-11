@@ -3,6 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import qrcode
+from bdh_sdk import is_admin
 from bdh_sdk.settings import app_setting
 from django.shortcuts import render
 
@@ -83,8 +84,8 @@ def qr_svg(text):
 
 
 def wifi_qr(request):
-    # Signed-in users see the full network list; guests only the public one.
-    key = "NETWORKS_AUTH" if request.user.is_authenticated else "NETWORKS_PUBLIC"
+    # Admins see the full network list; everyone else only the public one.
+    key = "NETWORKS_AUTH" if is_admin(request) else "NETWORKS_PUBLIC"
 
     qr_codes = []
     for ssid in _networks(key):
