@@ -378,3 +378,23 @@ class WifiSettingsTests(TestCase):
         response = Client().get(reverse("wifi_qr"))
         codes = {c["ssid"]: c["password"] for c in response.context["qr_codes"]}
         self.assertEqual(codes, {"legacy_net": "old-name"})
+
+    def test_no_networks_configured_shows_none(self):
+        # The base app must not ship a site-specific default network.
+        with mock.patch.dict(os.environ, {}, clear=True):
+            response = Client().get(reverse("wifi_qr"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["qr_codes"], [])
+
+    @mock.patch.dict(os.environ, {
+        "BDH_WIFI_NETWORKS_PUBLIC": "y'all guest",
+        "BDH_WIFI_PASSWORD_FOR_Y_ALL_GUEST": "pa;ss:wo,rd\\\"x",
+    })
+    def test_ssid_with_punctuation_and_escaped_qr(self):
+        response = Client().get(reverse("wifi_qr"))
+        codes = response.context["qr_codes"]
+        self.assertEqual([(c["ssid"], c["password"]) for c in codes],
+                         [("y'all guest", 'pa;ss:wo,rd\\"x')])
+        svg = base64.b64decode(codes[0]["qr_image"]).decode("utf-8")
+        self.assertEqual([d.data.decode("utf-8") for d in decode(_rasterize_qr_svg(svg))],
+                         ['WIFI:S:y\'all guest;T:WPA;P:pa\\;ss\\:wo\\,rd\\\\\\"x;;'])
