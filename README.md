@@ -9,7 +9,8 @@ Page: `/wifi/` (URL name `wifi_qr`). Admins (signed-in staff) see every network 
 `NETWORKS_AUTH`; everyone else sees `NETWORKS_PUBLIC`.
 
 Each network gets a site-branded SVG QR code from `bdh_sdk.qr.qr_svg`: error
-correction level H with the site's monogram over the centre.
+correction level H with the site's monogram over the centre. Special characters
+(`\ ; , : "`) in the SSID and password are escaped as the Wi-Fi QR format requires.
 
 ## Settings
 
@@ -18,9 +19,9 @@ the legacy name.
 
 | Setting | Legacy name | Default |
 |---|---|---|
-| `BDH_WIFI_NETWORKS_PUBLIC` | `WIFI_NETWORKS_PUBLIC` | `bdl_guest` (comma separated SSIDs) |
-| `BDH_WIFI_NETWORKS_AUTH` | `WIFI_NETWORKS_AUTH` | `bdl_guest` |
-| `BDH_WIFI_PASSWORD_FOR_<SSID>` | `WIFI_PASSWORD_FOR_<SSID>` | `password` (SSID upper-cased, spaces → `_`) |
+| `BDH_WIFI_NETWORKS_PUBLIC` | `WIFI_NETWORKS_PUBLIC` | none (comma separated SSIDs) |
+| `BDH_WIFI_NETWORKS_AUTH` | `WIFI_NETWORKS_AUTH` | none |
+| `BDH_WIFI_PASSWORD_FOR_<SSID>` | `WIFI_PASSWORD_FOR_<SSID>` | `password` (SSID upper-cased, every non-alphanumeric → `_`, e.g. `y'all guest` → `Y_ALL_GUEST`) |
 
 ## Development
 
