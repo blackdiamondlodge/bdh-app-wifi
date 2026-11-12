@@ -45,8 +45,12 @@ def _rasterize_qr_svg(svg, scale=12):
 
 
 def _decode_data_uri_svg(content):
-    """Decode the first QR code SVG data URI in a page."""
-    start = content.find(SVG_DATA_URI)
+    """Decode the QR code image (img.qr-code) in a page. Other SVG data URIs,
+    like the hub's monogram in the header, are skipped."""
+    start = content.find('class="qr-code"')
+    assert start != -1, "QR code image not found"
+    start = content.rfind("<img", 0, start)
+    start = content.find(SVG_DATA_URI, start)
     assert start != -1, "QR code SVG data URI not found"
     start += len(SVG_DATA_URI)
     svg = base64.b64decode(content[start:content.find('"', start)]).decode("utf-8")
